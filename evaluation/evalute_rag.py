@@ -12,7 +12,7 @@ Dependencies:
 Custom modules:
 - helper_functions (for RAG-specific operations)
 """
-
+import os
 import json
 from typing import List, Tuple
 
@@ -20,6 +20,15 @@ from deepeval import evaluate
 from deepeval.metrics import GEval, FaithfulnessMetric, ContextualRelevancyMetric
 from deepeval.test_case import LLMTestCase, LLMTestCaseParams
 from langchain_openai import ChatOpenAI
+
+from dotenv import load_dotenv
+
+load_dotenv()
+
+api_key=os.getenv("GITHUB_TOKEN")
+
+
+from deepeval.models.base_model import DeepEvalBaseLLM
 
 # 09/15/24 kimmeyh Added path where helper functions is located to the path
 # Add the parent directory to the path since we work with notebooks
@@ -34,6 +43,33 @@ from helper_functions import (
     answer_question_from_context,
     retrieve_context_per_question
 )
+
+
+class OpenAI_proxy(DeepEvalBaseLLM):
+    def __init__(
+        self,
+        model
+    ):
+        self.model = model
+
+    def load_model(self):
+        return self.model
+
+    def generate(self, prompt: str) -> str:
+        chat_model = self.load_model()
+        return chat_model.invoke(prompt).content
+
+    async def a_generate(self, prompt: str) -> str:
+        chat_model = self.load_model()
+        res = await chat_model.ainvoke(prompt)
+        return res.content
+
+    def get_model_name(self):
+        return "Github Model"
+
+# Replace these with real values
+custom_model = ChatOpenAI(base_url="https://models.inference.ai.azure.com",api_key=api_key,model="gpt-4o-mini")
+openai_p = OpenAI_proxy(model=custom_model)
 
 def create_deep_eval_test_cases(
     questions: List[str],
@@ -68,7 +104,7 @@ def create_deep_eval_test_cases(
 # Define evaluation metrics
 correctness_metric = GEval(
     name="Correctness",
-    model="gpt-4o",
+    model=openai_p,
     evaluation_params=[
         LLMTestCaseParams.EXPECTED_OUTPUT,
         LLMTestCaseParams.ACTUAL_OUTPUT
@@ -80,13 +116,13 @@ correctness_metric = GEval(
 
 faithfulness_metric = FaithfulnessMetric(
     threshold=0.7,
-    model="gpt-4",
+    model=openai_p,
     include_reason=False
 )
 
 relevance_metric = ContextualRelevancyMetric(
     threshold=1,
-    model="gpt-4",
+    model=openai_p,
     include_reason=True
 )
 
@@ -98,7 +134,7 @@ def evaluate_rag(chunks_query_retriever, num_questions: int = 5) -> None:
         chunks_query_retriever: Function to retrieve context chunks for a given query.
         num_questions (int): Number of questions to evaluate (default: 5).
     """
-    llm = ChatOpenAI(temperature=0, model_name="gpt-4o", max_tokens=2000)
+    llm = ChatOpenAI(temperature=0, model_name="gpt-4o-mini",base_url="https://models.inference.ai.azure.com",api_key=api_key)
     question_answer_from_context_chain = create_question_answer_from_context_chain(llm)
 
     # Load questions and answers from JSON file

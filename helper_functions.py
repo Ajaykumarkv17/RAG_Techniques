@@ -11,9 +11,16 @@ import fitz
 import asyncio
 import random
 import textwrap
+import os
 import numpy as np
+from azure.ai.inference import EmbeddingsClient
+from azure.core.credentials import AzureKeyCredential
 
+from dotenv import load_dotenv
 
+load_dotenv()
+
+api_key=os.getenv("GITHUB_TOKEN")
 def replace_t_with_space(list_of_documents):
     """
     Replaces all tab characters ('\t') with spaces in the page content of each document.
@@ -67,9 +74,9 @@ def encode_pdf(path, chunk_size=1000, chunk_overlap=200):
     )
     texts = text_splitter.split_documents(documents)
     cleaned_texts = replace_t_with_space(texts)
-
+    
     # Create embeddings and vector store
-    embeddings = OpenAIEmbeddings()
+    embeddings = OpenAIEmbeddings(base_url="https://models.inference.ai.azure.com",api_key=api_key,model="text-embedding-3-small")
     vectorstore = FAISS.from_documents(cleaned_texts, embeddings)
 
     return vectorstore
@@ -116,7 +123,7 @@ def encode_from_string(content, chunk_size=1000, chunk_overlap=200):
             chunk.metadata['relevance_score'] = 1.0
 
         # Generate embeddings and create the vector store
-        embeddings = OpenAIEmbeddings()
+        embeddings = OpenAIEmbeddings(base_url="https://models.inference.ai.azure.com",api_key=api_key,model="text-embedding-3-small")
         vectorstore = FAISS.from_documents(chunks, embeddings)
 
     except Exception as e:
