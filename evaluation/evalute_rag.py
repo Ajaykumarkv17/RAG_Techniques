@@ -104,6 +104,7 @@ def create_deep_eval_test_cases(
 # Define evaluation metrics
 correctness_metric = GEval(
     name="Correctness",
+    async_mode=False,
     model=openai_p,
     evaluation_params=[
         LLMTestCaseParams.EXPECTED_OUTPUT,
@@ -116,12 +117,14 @@ correctness_metric = GEval(
 
 faithfulness_metric = FaithfulnessMetric(
     threshold=0.7,
+    async_mode=False,
     model=openai_p,
     include_reason=False
 )
 
 relevance_metric = ContextualRelevancyMetric(
     threshold=1,
+    async_mode=False,
     model=openai_p,
     include_reason=True
 )
